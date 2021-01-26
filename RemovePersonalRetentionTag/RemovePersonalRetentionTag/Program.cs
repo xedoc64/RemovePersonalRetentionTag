@@ -46,23 +46,23 @@ namespace RemovePersonalRetentionTag
                     .CreateLogger();
 
                 // Parsing the arguments and basic plausibility checks
-                Log.Information("Program started.");
+                Log.Debug("Program started");
 
                 Log.Debug("Parsing arguments");
-                Log.Debug("mailbox: {mailbox}", arguments.Mailbox);
+                Log.Debug("mailbox: {Mailbox}", arguments.Mailbox);
                 Log.Debug("logonly: {IsLogonlySet}", arguments.LogOnly);
                 Log.Debug("impersonate: {IsImpersonateSet}", arguments.Impersonate);
                 Log.Debug("allowredirection: {IsAllowredirectionSet}", arguments.AllowRedirection);
                 Log.Debug("archive: {IsArchiveSet}", arguments.Archive);
-                if (arguments.RetentionId != null) Log.Debug("Retention id filter: {retentionId}", arguments.RetentionId);
+                if (arguments.RetentionId != null) Log.Debug("Retention id filter: {RetentionId}", arguments.RetentionId);
                 if (arguments.Foldername != null)
                 {
-                    Log.Debug("foldername: {foldername}", arguments.RetentionId);
+                    Log.Debug("foldername: {Foldername}", arguments.RetentionId);
                 }
 
                 if (arguments.User != null)
                 {
-                    Log.Debug("user: {user}", arguments.User);
+                    Log.Debug("user: {User}", arguments.User);
                 }
 
                 if (arguments.Password != null)
@@ -90,7 +90,7 @@ namespace RemovePersonalRetentionTag
                 if (arguments.Archive)
                 {
                     Log.Debug("archive: true");
-                    Log.Debug("Searching in archive instead of mailbox.");
+                    Log.Debug("Searching in archive instead of mailbox");
                     rootFolder = WellKnownFolderName.ArchiveMsgFolderRoot;
                 }
                 else
@@ -100,8 +100,8 @@ namespace RemovePersonalRetentionTag
 
                 if ((arguments.Mailbox == null) || (arguments.Mailbox.Length == 0))
                 {
-                    Log.Error("No mailbox given. Use -help to refer to the usage.");
-                    Log.Error("Program stopped with failures.");
+                    Log.Error("No mailbox given. Use -help to refer to the usage");
+                    Log.Error("Program stopped with failures");
                     Console.WriteLine("No mailbox given. Use -help to refer to the usage.");
                     Environment.Exit(1);
                 }
@@ -124,12 +124,12 @@ namespace RemovePersonalRetentionTag
 
                 if (exService == null)
                 {
-                    Log.Error("Error on creating the ews connection. Please check the parameters and permissions.");
-                    Log.Error("Program stopped with failures.");
+                    Log.Error("Error on creating the ews connection. Please check the parameters and permissions");
+                    Log.Error("Program stopped with failures");
                     Environment.Exit(2);
                 }
 
-                Log.Debug("Service created.");
+                Log.Debug("Service created");
 
                 List<Folder> folderList = Folders(exService, new FolderId(rootFolder, arguments.Mailbox));
 
@@ -137,7 +137,7 @@ namespace RemovePersonalRetentionTag
                 if (!string.IsNullOrEmpty(arguments.Foldername))
                 {
                     Log.Information(
-                        "Filtering the folder list because \"-foldername {foldername}\" was set",
+                        "Filtering the folder list because \"-foldername {Foldername}\" was set",
                         arguments.Foldername);
 
                     for (int i = folderList.Count - 1; i >= 0; i--) // yes, we need to it this way...
@@ -149,15 +149,15 @@ namespace RemovePersonalRetentionTag
                             if (!(folderPath.Contains(arguments.Foldername)))
                             {
                                 Log.Debug(
-                                        "The folder: \"{folderPath}\" does not match with the filter: \"{foldername}\"",
-                                arguments.Foldername);
+                                        "The folder: \"{FolderPath}\" does not match with the filter: \"{Foldername}\"",
+                                        folderPath, arguments.Foldername);
                                 folderList.RemoveAt(i);
                             }
                         }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, "Exception on an ews operation.");
-                            Log.Error("Program stopped with failures.");
+                            Log.Error(ex, "Exception on an ews operation");
+                            Log.Error("Program stopped with failures");
                             Environment.Exit(2);
                         }
                     }
@@ -278,7 +278,7 @@ namespace RemovePersonalRetentionTag
                     {
                         if (removeTag)
                         {
-                            Log.Information("Removing the archive tag.");
+                            Log.Information("Removing the archive tag");
                             try
                             {
                                 oFolder.ArchiveTag = null;
@@ -287,14 +287,16 @@ namespace RemovePersonalRetentionTag
                             catch (Exception e)
                             {
                                 Log.Error(
-                                    $"Error on removing archive tag from folder: {folder.Id}. Path: {GetFolderPath(exService, folder.Id)}");
-                                Log.Error($"Exception: {e}");
+                                    "Error on removing archive tag from folder: " +
+                                    "{FolderId}. Path: {FolderPath}", 
+                                    folder.Id, GetFolderPath(exService, folder.Id));
+                                Log.Error(e, "Exception:");
                             }
                         }
                     }
                     else if (removeTag)
                     {
-                        Log.Information("Removing the archive tag.");
+                        Log.Information("Removing the archive tag");
                         try
                         {
                             oFolder.ArchiveTag = null;
@@ -303,8 +305,10 @@ namespace RemovePersonalRetentionTag
                         catch (Exception e)
                         {
                             Log.Error(
-                                $"Error on removing archive tag from folder: {folder.Id}. Path: {GetFolderPath(exService, folder.Id)}");
-                            Log.Error($"Exception: {e}");
+                                "Error on removing archive tag from folder: {FolderId}. " +
+                                "Path: {FolderPath}",folder.Id, 
+                                GetFolderPath(exService, folder.Id));
+                            Log.Error(e, "Exception:");
                         }
                     }
                 }
@@ -321,7 +325,7 @@ namespace RemovePersonalRetentionTag
                     {
                         if (removeTag)
                         {
-                            Log.Information("Removing the policy tag.");
+                            Log.Information("Removing the policy tag");
                             try
                             {
                                 oFolder.PolicyTag = null;
@@ -330,14 +334,15 @@ namespace RemovePersonalRetentionTag
                             catch (Exception e)
                             {
                                 Log.Error(
-                                    "Error on removing policy tag from folder: {FolderID}. Path: {FolderPath}", folder.Id, GetFolderPath(exService, folder.Id));
+                                    "Error on removing policy tag from folder: {FolderID}. " +
+                                    "Path: {FolderPath}", folder.Id, GetFolderPath(exService, folder.Id));
                                 Log.Error(e ,"Exception:");
                             }
                         }
                     }
                     else if (removeTag)
                     {
-                        Log.Information("Removing the policy tag.");
+                        Log.Information("Removing the policy tag");
                         try
                         {
                             oFolder.PolicyTag = null;
@@ -346,7 +351,8 @@ namespace RemovePersonalRetentionTag
                         catch (Exception e)
                         {
                             Log.Error(
-                                "Error on removing policy tag from folder: {FolderID}. Path: {FolderPath}", folder.Id, GetFolderPath(exService, folder.Id));
+                                "Error on removing policy tag from folder: {FolderID}. Path: {FolderPath}",
+                                folder.Id, GetFolderPath(exService, folder.Id));
                             Log.Error(e ,"Exception:");
                         }
                     }
@@ -357,7 +363,7 @@ namespace RemovePersonalRetentionTag
                     try
                     {
                         oFolder.Update();
-                        Log.Information("Tag removed successfully.");
+                        Log.Information("Tag removed successfully");
                         
                     }
                     catch (Exception e)
@@ -425,7 +431,7 @@ namespace RemovePersonalRetentionTag
             }
             catch (Exception e)
             {
-                Log.Error(e, "Connection to mailbox failed.");
+                Log.Error(e, "Connection to mailbox failed");
             }
 
             return null;
@@ -552,8 +558,8 @@ namespace RemovePersonalRetentionTag
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Failed to fetch folders.");
-                    Log.Error("Program ended with errors.");
+                    Log.Error(e, "Failed to fetch folders");
+                    Log.Error("Program ended with errors");
                     moreItems = false;
                     Environment.Exit(2);
                 }
