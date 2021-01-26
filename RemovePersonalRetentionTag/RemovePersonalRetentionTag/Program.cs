@@ -13,7 +13,7 @@ using Serilog;
 
 namespace RemovePersonalRetentionTag
 {
-    class Program
+    internal static class Program
     {
         private static FindFoldersResults _findFolders;
 
@@ -164,14 +164,9 @@ namespace RemovePersonalRetentionTag
                 }
 
                 // Remove the tag, retention time and retention flag
-                if (arguments.RetentionId != null)
-                {
-                    RemoveTag(folderList, exService, arguments.RetentionId.Split(',').ToList(), !arguments.LogOnly);
-                }
-                else
-                {
-                    RemoveTag(folderList, exService, null, !arguments.LogOnly);
-                }
+                RemoveTag(folderList, exService,
+                    arguments.RetentionId?.Split(',').ToList(),
+                    !arguments.LogOnly);
             }
         }
 
@@ -491,8 +486,7 @@ namespace RemovePersonalRetentionTag
             {
                 var folderPathProperty = new ExtendedPropertyDefinition(0x66B5, MapiPropertyType.String);
 
-                var psset1 = new PropertySet(BasePropertySet.FirstClassProperties);
-                psset1.Add(folderPathProperty);
+                var psset1 = new PropertySet(BasePropertySet.FirstClassProperties) {folderPathProperty};
 
                 var folderwithPath = Folder.Bind(service, id, psset1);
 
@@ -573,7 +567,7 @@ namespace RemovePersonalRetentionTag
         /// </summary>
         /// <param name="url">The url which the program will connect to.</param>
         /// <returns></returns>
-        public static bool RedirectionCallback(string url)
+        private static bool RedirectionCallback(string url)
         {
             // Return true if the URL is an HTTPS URL.
             return url.ToLower().StartsWith("https://");
