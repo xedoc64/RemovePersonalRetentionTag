@@ -99,12 +99,10 @@ namespace RemovePersonalRetentionTag
                         Log.Debug("archive: true");
                         Log.Debug("Searching in archive instead of mailbox.");
                     }
-
                     rootFolder = WellKnownFolderName.ArchiveMsgFolderRoot;
                 }
                 else
                 {
-                    if (Log.IsDebugEnabled) Log.Debug("archive: true");
                     rootFolder = WellKnownFolderName.MsgFolderRoot;
                 }
 
