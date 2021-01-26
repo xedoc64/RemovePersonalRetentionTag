@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("RemovePersonalRetentionTag")]
-[assembly: AssemblyCopyright("Copyright Torsten Schlopsnies ©  2021")]
+[assembly: AssemblyCopyright("Copyright © 2021 Torsten Schlopsnies")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
