@@ -2,25 +2,19 @@
 //
 // Author: Torsten Schlopsnies
 //
-// Published under LGPL3.0 license
+// Published under MIT license
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using Microsoft.Exchange.WebServices.Data;
-
-// Configure log4net using the .config file
-[assembly: log4net.Config.XmlConfigurator(Watch = true)]
+using Serilog;
 
 namespace RemovePersonalRetentionTag
 {
     class Program
     {
-        // Logger       
-        private static readonly log4net.ILog Log =
-            log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
-
         private static FindFoldersResults _findFolders;
 
         /// <summary>
@@ -46,59 +40,57 @@ namespace RemovePersonalRetentionTag
                     Environment.Exit(0);
                 }
 
+                // We need to start the logger here
+                Log.Logger = new LoggerConfiguration()
+                    .ReadFrom.AppSettings()
+                    .CreateLogger();
+
                 // Parsing the arguments and basic plausibility checks
-                if (Log.IsInfoEnabled) Log.Info("Program started.");
+                Log.Information("Program started.");
 
-                if (Log.IsDebugEnabled)
+                Log.Debug("Parsing arguments");
+                Log.Debug("mailbox: {mailbox}", arguments.Mailbox);
+                Log.Debug("logonly: {IsLogonlySet}", arguments.LogOnly);
+                Log.Debug("impersonate: {IsImpersonateSet}", arguments.Impersonate);
+                Log.Debug("allowredirection: {IsAllowredirectionSet}", arguments.AllowRedirection);
+                Log.Debug("archive: {IsArchiveSet}", arguments.Archive);
+                if (arguments.RetentionId != null) Log.Debug("Retention id filter: {retentionId}", arguments.RetentionId);
+                if (arguments.Foldername != null)
                 {
-                    Log.Debug("Parsing arguments");
-                    Log.Debug($"mailbox: {arguments.Mailbox}");
-                    Log.Debug($"logonly: {arguments.LogOnly}");
-                    Log.Debug($"impersonate: {arguments.Impersonate}");
-                    Log.Debug($"allowredirection: {arguments.AllowRedirection}");
-                    Log.Debug($"archive: {arguments.Archive}");
-                    if (arguments.RetentionId != null) Log.Debug($"Retention id filter: {arguments.RetentionId}");
+                    Log.Debug("foldername: {foldername}", arguments.RetentionId);
+                }
 
-                    if (arguments.Foldername != null)
-                    {
-                        Log.Debug($"foldername: {arguments.Foldername}");
-                    }
+                if (arguments.User != null)
+                {
+                    Log.Debug("user: {user}", arguments.User);
+                }
 
-                    if (arguments.User != null)
-                    {
-                        Log.Debug($"user: {arguments.User}");
-                    }
+                if (arguments.Password != null)
+                {
+                    Log.Debug("password: is set, will not be logged");
+                }
 
-                    if (arguments.Password != null)
-                    {
-                        Log.Debug("password: is set, will not be logged");
-                    }
+                if (arguments.IgnoreCertificate)
+                {
+                    Log.Warning("Ignoring SSL error because option -ignorecertificate is set");
+                    ServicePointManager.ServerCertificateValidationCallback +=
+                        (sender, cert, chain, sslPolicyErrors) => true;
+                }
 
-                    if (arguments.IgnoreCertificate)
-                    {
-                        Log.Warn("Ignoring SSL error because option -ignorecertificate is set");
-                        ServicePointManager.ServerCertificateValidationCallback +=
-                            (sender, cert, chain, sslPolicyErrors) => true;
-                    }
-
-                    if (arguments.URL != null)
-                    {
-                        Log.Debug($"Server URL: {arguments.URL}");
-                    }
-                    else
-                    {
-                        Log.Debug("Server URL: using autodiscover");
-                    }
+                if (arguments.URL != null)
+                {
+                    Log.Debug("Server URL: {ServerUrl}", arguments.URL);
+                }
+                else
+                {
+                    Log.Debug("Server URL: using autodiscover");
                 }
 
                 // We set here the root folder from where we will searching
                 if (arguments.Archive)
                 {
-                    if (Log.IsDebugEnabled)
-                    {
-                        Log.Debug("archive: true");
-                        Log.Debug("Searching in archive instead of mailbox.");
-                    }
+                    Log.Debug("archive: true");
+                    Log.Debug("Searching in archive instead of mailbox.");
                     rootFolder = WellKnownFolderName.ArchiveMsgFolderRoot;
                 }
                 else
@@ -137,16 +129,16 @@ namespace RemovePersonalRetentionTag
                     Environment.Exit(2);
                 }
 
-                if (Log.IsDebugEnabled) Log.Debug("Service created.");
+                Log.Debug("Service created.");
 
                 List<Folder> folderList = Folders(exService, new FolderId(rootFolder, arguments.Mailbox));
 
                 // We will filter the complete list, if the parameter foldername was set
                 if (!string.IsNullOrEmpty(arguments.Foldername))
                 {
-                    if (Log.IsInfoEnabled)
-                        Log.Info(
-                            $"Filtering the folder list because \"-foldername {arguments.Foldername}\" was set");
+                    Log.Information(
+                        "Filtering the folder list because \"-foldername {foldername}\" was set",
+                        arguments.Foldername);
 
                     for (int i = folderList.Count - 1; i >= 0; i--) // yes, we need to it this way...
                     {
@@ -156,15 +148,15 @@ namespace RemovePersonalRetentionTag
 
                             if (!(folderPath.Contains(arguments.Foldername)))
                             {
-                                if (Log.IsDebugEnabled)
-                                    Log.Debug(
-                                        $"The folder: \"{folderPath}\" does not match with the filter: \"{arguments.Foldername}\"");
+                                Log.Debug(
+                                        "The folder: \"{folderPath}\" does not match with the filter: \"{foldername}\"",
+                                arguments.Foldername);
                                 folderList.RemoveAt(i);
                             }
                         }
                         catch (Exception ex)
                         {
-                            Log.Error($"Exception on an ews operation. Text from the exception: {ex}.");
+                            Log.Error(ex, "Exception on an ews operation.");
                             Log.Error("Program stopped with failures.");
                             Environment.Exit(2);
                         }
@@ -277,19 +269,16 @@ namespace RemovePersonalRetentionTag
                 var oFolder = Folder.Bind(exService, folder.Id);
                 if (oFolder.ArchiveTag != null)
                 {
-                    if (Log.IsInfoEnabled)
-                    {
-                        Log.Info($"Folder with archive tag found, ID: {folder.Id}");
-                        Log.Info($"Folder name: {folder.DisplayName}");
-                        Log.Info($"Folder path: {GetFolderPath(exService, folder.Id)}");
-                        Log.Info($"Retention id: {oFolder.ArchiveTag.RetentionId}");
-                    }
-
+                    Log.Information("Folder with archive tag found, ID: {FolderID}", folder.Id);
+                    Log.Information("Folder name: {FolderDisplayName}", folder.DisplayName);
+                    Log.Information("Folder path: {FolderPath}", GetFolderPath(exService, folder.Id));
+                    Log.Information("Retention id: {FolderRetentionId}", oFolder.ArchiveTag.RetentionId);
+                    
                     if ((retentionId != null) && (retentionId.Contains(oFolder.ArchiveTag.RetentionId.ToString())))
                     {
                         if (removeTag)
                         {
-                            if (Log.IsInfoEnabled) Log.Info("Removing the archive tag.");
+                            Log.Information("Removing the archive tag.");
                             try
                             {
                                 oFolder.ArchiveTag = null;
@@ -305,7 +294,7 @@ namespace RemovePersonalRetentionTag
                     }
                     else if (removeTag)
                     {
-                        if (Log.IsInfoEnabled) Log.Info("Removing the archive tag.");
+                        Log.Information("Removing the archive tag.");
                         try
                         {
                             oFolder.ArchiveTag = null;
@@ -322,19 +311,17 @@ namespace RemovePersonalRetentionTag
 
                 if (oFolder.PolicyTag != null)
                 {
-                    if (Log.IsInfoEnabled)
-                    {
-                        Log.Info($"Folder with policy tag found, ID: {folder.Id}");
-                        Log.Info($"Folder name: {folder.DisplayName}");
-                        Log.Info($"Folder path: {GetFolderPath(exService, folder.Id)}");
-                        Log.Info($"Retention id: {oFolder.PolicyTag.RetentionId}");
-                    }
+                     Log.Information("Folder with policy tag found, ID: {FolderID}", folder.Id);
+                     Log.Information("Folder name: {FolderDisplayName}",folder.DisplayName);
+                     Log.Information("Folder path: {FolderPath}", GetFolderPath(exService, folder.Id));
+                     Log.Information("Retention id: {FolderRetentionId}", oFolder.PolicyTag.RetentionId);
+                    
 
                     if ((retentionId != null) && (retentionId.Contains(oFolder.PolicyTag.RetentionId.ToString())))
                     {
                         if (removeTag)
                         {
-                            if (Log.IsInfoEnabled) Log.Info("Removing the policy tag.");
+                            Log.Information("Removing the policy tag.");
                             try
                             {
                                 oFolder.PolicyTag = null;
@@ -343,14 +330,14 @@ namespace RemovePersonalRetentionTag
                             catch (Exception e)
                             {
                                 Log.Error(
-                                    $"Error on removing policy tag from folder: {folder.Id}. Path: {GetFolderPath(exService, folder.Id)}");
-                                Log.Error($"Exception: {e}");
+                                    "Error on removing policy tag from folder: {FolderID}. Path: {FolderPath}", folder.Id, GetFolderPath(exService, folder.Id));
+                                Log.Error(e ,"Exception:");
                             }
                         }
                     }
                     else if (removeTag)
                     {
-                        if (Log.IsInfoEnabled) Log.Info("Removing the policy tag.");
+                        Log.Information("Removing the policy tag.");
                         try
                         {
                             oFolder.PolicyTag = null;
@@ -359,8 +346,8 @@ namespace RemovePersonalRetentionTag
                         catch (Exception e)
                         {
                             Log.Error(
-                                $"Error on removing policy tag from folder: {folder.Id}. Path: {GetFolderPath(exService, folder.Id)}");
-                            Log.Error($"Exception: {e}");
+                                "Error on removing policy tag from folder: {FolderID}. Path: {FolderPath}", folder.Id, GetFolderPath(exService, folder.Id));
+                            Log.Error(e ,"Exception:");
                         }
                     }
                 }
@@ -370,7 +357,8 @@ namespace RemovePersonalRetentionTag
                     try
                     {
                         oFolder.Update();
-                        if (Log.IsInfoEnabled) Log.Info("Tag removed successfully.");
+                        Log.Information("Tag removed successfully.");
+                        
                     }
                     catch (Exception e)
                     {
@@ -405,7 +393,7 @@ namespace RemovePersonalRetentionTag
         private static ExchangeService ConnectToExchange(string mailboxId, bool allowredirection, string user,
             string password, bool impersonation)
         {
-            if (Log.IsInfoEnabled) Log.Info($"Connect to mailbox {mailboxId}");
+            Log.Information("Connect to mailbox {Mailbox}", mailboxId);
             try
             {
                 var service = new ExchangeService();
@@ -435,9 +423,9 @@ namespace RemovePersonalRetentionTag
 
                 return service;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Log.Error("Connection to mailbox failed", ex);
+                Log.Error(e, "Connection to mailbox failed.");
             }
 
             return null;
@@ -455,7 +443,7 @@ namespace RemovePersonalRetentionTag
         private static ExchangeService ConnectToExchange(string mailboxId, string url, string user, string password,
             bool impersonation)
         {
-            if (Log.IsInfoEnabled) Log.Info($"Connect to mailbox {mailboxId}");
+            Log.Information("Connect to mailbox {Mailbox}", mailboxId);
             try
             {
                 var service = new ExchangeService();
@@ -477,9 +465,9 @@ namespace RemovePersonalRetentionTag
 
                 return service;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Log.Error("Connection to mailbox failed", ex);
+                Log.Error(e, "Connection to mailbox failed");
             }
 
             return null;
@@ -516,9 +504,9 @@ namespace RemovePersonalRetentionTag
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Log.Error("Failed to get folder path", ex);
+                Log.Error(e,"Failed to get folder path");
             }
 
             return "";
@@ -562,9 +550,9 @@ namespace RemovePersonalRetentionTag
                     // if we have more folders than we have to page
                     if (moreItems) view.Offset += pageSize;
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    Log.Error("Failed to fetch folders.", ex);
+                    Log.Error(e, "Failed to fetch folders.");
                     Log.Error("Program ended with errors.");
                     moreItems = false;
                     Environment.Exit(2);
