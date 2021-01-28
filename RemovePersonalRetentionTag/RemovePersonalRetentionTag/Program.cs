@@ -15,7 +15,7 @@ namespace RemovePersonalRetentionTag
 {
     internal static class Program
     {
-        private static FindFoldersResults _findFolders;
+        
 
         /// <summary>
         /// The main function from the program
@@ -113,12 +113,12 @@ namespace RemovePersonalRetentionTag
                 if (arguments.URL != null)
                 {
                     // Autodiscover
-                    exService = ConnectToExchange(arguments.Mailbox, arguments.URL, arguments.User, arguments.Password,
-                        arguments.Impersonate);
+                    exService = new ExService().Service(arguments.Mailbox, arguments.URL, arguments.User,
+                        arguments.Password, arguments.Impersonate);
                 }
                 else
                 {
-                    exService = ConnectToExchange(arguments.Mailbox, arguments.AllowRedirection, arguments.User,
+                    exService = new ExService().Service(arguments.Mailbox, arguments.AllowRedirection, arguments.User,
                         arguments.Password, arguments.Impersonate);
                 }
 
@@ -131,7 +131,7 @@ namespace RemovePersonalRetentionTag
 
                 Log.Debug("Service created");
 
-                List<Folder> folderList = Folders(exService, new FolderId(rootFolder, arguments.Mailbox));
+                List<Folder> folderList = FolderUtils.Folders(exService, new FolderId(rootFolder, arguments.Mailbox));
 
                 // We will filter the complete list, if the parameter foldername was set
                 if (!string.IsNullOrEmpty(arguments.Foldername))
@@ -144,7 +144,7 @@ namespace RemovePersonalRetentionTag
                     {
                         try
                         {
-                            var folderPath = GetFolderPath(exService, folderList[i].Id);
+                            var folderPath = FolderUtils.GetFolderPath(exService, folderList[i].Id);
 
                             if (!(folderPath.Contains(arguments.Foldername)))
                             {
@@ -164,7 +164,7 @@ namespace RemovePersonalRetentionTag
                 }
 
                 // Remove the tag, retention time and retention flag
-                RemoveTag(folderList, exService,
+                FolderUtils.RemoveTag(folderList, exService,
                     arguments.RetentionId?.Split(',').ToList(),
                     !arguments.LogOnly);
             }
@@ -254,122 +254,7 @@ namespace RemovePersonalRetentionTag
                     break;
             }
         }
-
-        private static void RemoveTag(List<Folder> folderList, ExchangeService exService, List<string> retentionId,
-            bool removeTag)
-        {
-            foreach (var folder in folderList)
-            {
-                var folderChanged = false;
-                var oFolder = Folder.Bind(exService, folder.Id);
-                if (oFolder.ArchiveTag != null)
-                {
-                    Log.Information("Folder with archive tag found, ID: {FolderID}", folder.Id);
-                    Log.Information("Folder name: {FolderDisplayName}", folder.DisplayName);
-                    Log.Information("Folder path: {FolderPath}", GetFolderPath(exService, folder.Id));
-                    Log.Information("Retention id: {FolderRetentionId}", oFolder.ArchiveTag.RetentionId);
-                    
-                    if ((retentionId != null) && (retentionId.Contains(oFolder.ArchiveTag.RetentionId.ToString())))
-                    {
-                        if (removeTag)
-                        {
-                            Log.Information("Removing the archive tag");
-                            try
-                            {
-                                oFolder.ArchiveTag = null;
-                                folderChanged = true;
-                            }
-                            catch (Exception e)
-                            {
-                                Log.Error(
-                                    "Error on removing archive tag from folder: " +
-                                    "{FolderId}. Path: {FolderPath}", 
-                                    folder.Id, GetFolderPath(exService, folder.Id));
-                                Log.Error(e, "Exception:");
-                            }
-                        }
-                    }
-                    else if (removeTag)
-                    {
-                        Log.Information("Removing the archive tag");
-                        try
-                        {
-                            oFolder.ArchiveTag = null;
-                            folderChanged = true;
-                        }
-                        catch (Exception e)
-                        {
-                            Log.Error(
-                                "Error on removing archive tag from folder: {FolderId}. " +
-                                "Path: {FolderPath}",folder.Id, 
-                                GetFolderPath(exService, folder.Id));
-                            Log.Error(e, "Exception:");
-                        }
-                    }
-                }
-
-                if (oFolder.PolicyTag != null)
-                {
-                     Log.Information("Folder with policy tag found, ID: {FolderID}", folder.Id);
-                     Log.Information("Folder name: {FolderDisplayName}",folder.DisplayName);
-                     Log.Information("Folder path: {FolderPath}", GetFolderPath(exService, folder.Id));
-                     Log.Information("Retention id: {FolderRetentionId}", oFolder.PolicyTag.RetentionId);
-                    
-
-                    if ((retentionId != null) && (retentionId.Contains(oFolder.PolicyTag.RetentionId.ToString())))
-                    {
-                        if (removeTag)
-                        {
-                            Log.Information("Removing the policy tag");
-                            try
-                            {
-                                oFolder.PolicyTag = null;
-                                folderChanged = true;
-                            }
-                            catch (Exception e)
-                            {
-                                Log.Error(
-                                    "Error on removing policy tag from folder: {FolderID}. " +
-                                    "Path: {FolderPath}", folder.Id, GetFolderPath(exService, folder.Id));
-                                Log.Error(e ,"Exception:");
-                            }
-                        }
-                    }
-                    else if (removeTag)
-                    {
-                        Log.Information("Removing the policy tag");
-                        try
-                        {
-                            oFolder.PolicyTag = null;
-                            folderChanged = true;
-                        }
-                        catch (Exception e)
-                        {
-                            Log.Error(
-                                "Error on removing policy tag from folder: {FolderID}. Path: {FolderPath}",
-                                folder.Id, GetFolderPath(exService, folder.Id));
-                            Log.Error(e ,"Exception:");
-                        }
-                    }
-                }
-
-                if (folderChanged)
-                {
-                    try
-                    {
-                        oFolder.Update();
-                        Log.Information("Tag removed successfully");
-                        
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e);
-                        throw;
-                    }
-                }
-            }
-        }
-
+        
         /// <summary>
         /// Display a basic help
         /// </summary>
@@ -380,197 +265,6 @@ namespace RemovePersonalRetentionTag
                 "RemovePersonalRetentionTag.exe -mailbox \"user@example.com\" [-logonly] [-foldername \"Inbox\"]  [-ignorecertificate] [-url \"https://server/EWS/Exchange.asmx\"] [-user \"user@example.com\"] [-password \"Pa$$w0rd\"] [-impersonate] [-retentionid \"a7966968-dadf-4df7-ae87-4482686b4634\" [-archive]");
             Console.WriteLine(
                 "For more information use the parameter -usage with a parameter you would like to know about more. E.g. -usage \"mailbox\"");
-        }
-
-        /// <summary>
-        /// Connect to Exchange using AutoDiscover for the given email address
-        /// </summary>
-        /// <param name="mailboxId">The users email address</param>
-        /// <param name="allowredirection"></param>
-        /// <param name="user"></param>
-        /// <param name="password"></param>
-        /// <param name="impersonation"></param>
-        /// <returns>Exchange Web Service binding</returns>
-        private static ExchangeService ConnectToExchange(string mailboxId, bool allowredirection, string user,
-            string password, bool impersonation)
-        {
-            Log.Information("Connect to mailbox {Mailbox}", mailboxId);
-            try
-            {
-                var service = new ExchangeService();
-
-                if ((user == null) | (password == null))
-                {
-                    service.UseDefaultCredentials = true;
-                }
-                else
-                {
-                    service.Credentials = new WebCredentials(user, password);
-                }
-
-                if (allowredirection)
-                {
-                    service.AutodiscoverUrl(mailboxId, RedirectionCallback);
-                }
-                else
-                {
-                    service.AutodiscoverUrl(mailboxId);
-                }
-
-                if (impersonation)
-                {
-                    service.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, mailboxId);
-                }
-
-                return service;
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Connection to mailbox failed");
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Connect to Exchange using AutoDiscover for the given email address
-        /// </summary>
-        /// <param name="mailboxId">The users email address</param>
-        /// <param name="url"></param>
-        /// <param name="user"></param>
-        /// <param name="password"></param>
-        /// <param name="impersonation"></param>
-        /// <returns>Exchange Web Service binding</returns>
-        private static ExchangeService ConnectToExchange(string mailboxId, string url, string user, string password,
-            bool impersonation)
-        {
-            Log.Information("Connect to mailbox {Mailbox}", mailboxId);
-            try
-            {
-                var service = new ExchangeService();
-
-                if ((user == null) | (password == null))
-                {
-                    service.UseDefaultCredentials = true;
-                }
-                else
-                {
-                    service.Credentials = new WebCredentials(user, password);
-                }
-
-                service.Url = new Uri(url);
-                if (impersonation)
-                {
-                    service.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, mailboxId);
-                }
-
-                return service;
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Connection to mailbox failed");
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Get a single mailbox folder path
-        /// </summary>
-        /// <param name="service">The active EWs connection</param>
-        /// <param name="id">The mailbox folder Id</param>
-        /// <returns>A string containing the current mailbox folder path</returns>
-        private static string GetFolderPath(ExchangeService service, FolderId id)
-        {
-            try
-            {
-                var folderPathProperty = new ExtendedPropertyDefinition(0x66B5, MapiPropertyType.String);
-
-                var psset1 = new PropertySet(BasePropertySet.FirstClassProperties) {folderPathProperty};
-
-                var folderwithPath = Folder.Bind(service, id, psset1);
-
-                if (folderwithPath.TryGetProperty(folderPathProperty, out var folderPathVal))
-                {
-                    // because the FolderPath contains characters we don't want, we need to fix it
-                    var folderPathTemp = folderPathVal.ToString();
-                    if (folderPathTemp.Contains("￾"))
-                    {
-                        return folderPathTemp.Replace("￾", "\\");
-                    }
-                    else
-                    {
-                        return folderPathTemp;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e,"Failed to get folder path");
-            }
-
-            return "";
-        }
-
-        /// <summary>
-        /// Find all folders under MsgRootFolder
-        /// </summary>
-        /// <param name="service"></param>
-        /// <param name="searchRootFolder"></param>
-        /// <returns>Result of a folder search operation</returns>
-        private static List<Folder> Folders(ExchangeService service, FolderId searchRootFolder)
-        {
-            // try to find all folder that are unter MsgRootFolder
-            int pageSize = 100;
-            int pageOffset = 0;
-            bool moreItems = true;
-            var view = new FolderView(pageSize, pageOffset);
-            var resultFolders = new List<Folder>();
-
-
-            var propertySet =
-                new PropertySet(BasePropertySet.FirstClassProperties, FolderSchema.DisplayName);
-
-            view.PropertySet = propertySet;
-            view.Traversal = FolderTraversal.Deep;
-
-            while (moreItems)
-            {
-                try
-                {
-                    _findFolders = service.FindFolders(searchRootFolder, view);
-
-                    moreItems = _findFolders.MoreAvailable;
-
-                    foreach (var folder in _findFolders)
-                    {
-                        resultFolders.Add(folder);
-                    }
-
-                    // if we have more folders than we have to page
-                    if (moreItems) view.Offset += pageSize;
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Failed to fetch folders");
-                    Log.Error("Program ended with errors");
-                    moreItems = false;
-                    Environment.Exit(2);
-                }
-            }
-
-            return resultFolders;
-        }
-
-        /// <summary>
-        /// Redirection handler if -allowredirection is set
-        /// </summary>
-        /// <param name="url">The url which the program will connect to.</param>
-        /// <returns></returns>
-        private static bool RedirectionCallback(string url)
-        {
-            // Return true if the URL is an HTTPS URL.
-            return url.ToLower().StartsWith("https://");
         }
     }
 }
