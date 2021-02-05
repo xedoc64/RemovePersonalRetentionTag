@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <ApplicationIcon>Icons/grading.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -33,13 +34,27 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="log4net">
-      <HintPath>..\..\ThirdPartyDlls\log4net.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.Exchange.WebServices">
       <HintPath>..\..\ThirdPartyDlls\Microsoft.Exchange.WebServices.dll</HintPath>
     </Reference>
+    <Reference Include="Serilog, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10">
+      <HintPath>..\packages\Serilog.2.10.0\lib\net46\Serilog.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Serilog.Settings.AppSettings, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10">
+      <HintPath>..\packages\Serilog.Settings.AppSettings.2.2.2\lib\net45\Serilog.Settings.AppSettings.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Serilog.Sinks.Console, Version=3.1.1.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10">
+      <HintPath>..\packages\Serilog.Sinks.Console.3.1.1\lib\net45\Serilog.Sinks.Console.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Serilog.Sinks.File, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10">
+      <HintPath>..\packages\Serilog.Sinks.File.4.1.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -49,6 +64,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ExService.cs" />
+    <Compile Include="FolderUtils.cs" />
     <Compile Include="InputArguments.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -56,6 +73,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\LICENSE.md">
+      <Link>LICENSE.md</Link>
+    </Content>
+    <Content Include="..\..\README.md">
+      <Link>README.md</Link>
+    </Content>
+    <Content Include="Icons\grading.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

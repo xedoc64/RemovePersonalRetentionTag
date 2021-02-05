@@ -93,3 +93,6 @@ One or more retention ids separated with a ",". Limit the all actions only to th
 ## License
 
 MIT License
+
+### Usages:<br>
+- Icons from https://material.io. Licensed under Apache License V 2.0
