@@ -12,12 +12,16 @@ namespace RemovePersonalRetentionTag
         public static void RemoveTag(List<Folder> folderList, ExchangeService exService, List<string> retentionId,
             bool removeTag)
         {
+            int found = 0;
+            int removed = 0;
+
             foreach (var folder in folderList)
             {
                 var folderChanged = false;
                 var oFolder = Folder.Bind(exService, folder.Id);
                 if (oFolder.ArchiveTag != null)
                 {
+                    found++;
                     Log.Information("Folder with archive tag found, ID: {FolderID}", folder.Id);
                     Log.Information("Folder name: {FolderDisplayName}", folder.DisplayName);
                     Log.Information("Folder path: {FolderPath}", GetFolderPath(exService, folder.Id));
@@ -50,6 +54,7 @@ namespace RemovePersonalRetentionTag
                         {
                             oFolder.ArchiveTag = null;
                             folderChanged = true;
+                            removed++;
                         }
                         catch (Exception e)
                         {
@@ -122,6 +127,8 @@ namespace RemovePersonalRetentionTag
                     }
                 }
             }
+            Log.Information("Folders with a personal retention tag found: {found}");
+            Log.Information("Folders with a personal retention tag removed: {removed}");
         }
         
                 /// <summary>
@@ -136,11 +143,11 @@ namespace RemovePersonalRetentionTag
             {
                 var folderPathProperty = new ExtendedPropertyDefinition(0x66B5, MapiPropertyType.String);
 
-                var psset1 = new PropertySet(BasePropertySet.FirstClassProperties) {folderPathProperty};
+                var propertySet = new PropertySet(BasePropertySet.FirstClassProperties) {folderPathProperty};
 
-                var folderwithPath = Folder.Bind(service, id, psset1);
+                var folderIncludingPath = Folder.Bind(service, id, propertySet);
 
-                if (folderwithPath.TryGetProperty(folderPathProperty, out var folderPathVal))
+                if (folderIncludingPath.TryGetProperty(folderPathProperty, out var folderPathVal))
                 {
                     // because the FolderPath contains characters we don't want, we need to fix it
                     var folderPathTemp = folderPathVal.ToString();
@@ -170,7 +177,7 @@ namespace RemovePersonalRetentionTag
         /// <returns>Result of a folder search operation</returns>
         public static List<Folder> Folders(ExchangeService service, FolderId searchRootFolder)
         {
-            // try to find all folder that are unter MsgRootFolder
+            // try to find all folder that are under MsgRootFolder
             int pageSize = 100;
             int pageOffset = 0;
             bool moreItems = true;
